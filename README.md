@@ -9,7 +9,8 @@ docker-repl - docker REPL tool for shell.
 USAGE
 ----
 ```
- * docker-repl                      # Launch git with REPL in current path.
+ * docker-repl                   # Launch git with REPL in current path.
+ *  [-s|--with-sudo]             # sudo mode.
  *  [-h|--help]                  # Show This help.
 ```
 

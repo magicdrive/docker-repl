@@ -5,6 +5,7 @@
 #
 # USAGE:
 #     * docker-repl                   # Launch docker with REPL in current path.
+#     *  [-s|--with-sudo]             # sudo mode.
 #     *  [-h|--help]                  # Show This help.
 #
 # MIT License
@@ -31,7 +32,7 @@
 
 set -e
 
-__DOCKER_REPL_PROMPT_ORIG="\[\e[1;36m\]\$ docker > \[\e[m\]"
+__DOCKER_REPL_PROMPT_ORIG="\[\e[1;36m\]\$ \$(__prompt::docker_mode) > \[\e[m\]"
 export DOCKER_REPL_DEFAULT_PROMPT="${DOCKER_REPL_DEFAULT_PROMPT:-${__DOCKER_REPL_PROMPT_ORIG}}"
 export DOCKER_REPL_LS_CMD="${DOCKER_REPL_LS_CMD}"
 export DOCKER_REPL_CAT_CMD="${DOCKER_REPL_CAT_CMD}"
@@ -45,17 +46,30 @@ HELP
     exit 1
 }
 
+__prompt::docker_mode() {
+    echo ${dockercmd}
+}
+
+docker::repl::with_sudo_mode() {
+    __DOCKER_REPL_WITH_SUDO_MODE="1"
+}
 
 docker::repl::main() {
+    if [ "${__DOCKER_REPL_WITH_SUDO_MODE}" = "1" ];then
+        dockercmd="sudo docker"
+    else
+        dockercmd="docker"
+    fi
+
     while true; do
         echo -ne "${DOCKER_REPL_DEFAULT_PROMPT@P}"
         read subcommand
 
-        cmd="docker ${subcommand}"
+        cmd="${dockercmd} ${subcommand}"
 
         case "${subcommand}" in
             "help")
-                docker --help
+                ${dockercmd} --help
                 ;;
             "exit")
                 echo "bye."
@@ -79,11 +93,14 @@ if [ "$1" != "--no-rlwrap" ];then
     exec rlwrap --remember $0 --no-rlwrap $@ && exit 0;
 fi
 
-optspec=":-:hcv"
+optspec=":-:hs"
 while getopts "$optspec" optchar; do
     case "${optchar}" in
         -)
             case "${OPTARG}" in
+                with-sudo)
+                    docker::repl::with_sudo_mode
+                    ;;
                 help)
                     docker::repl::help; exit 1
                     ;;
@@ -93,6 +110,9 @@ while getopts "$optspec" optchar; do
                     fi
                     ;;
             esac;;
+        s)
+            docker::repl::with_sudo_mode
+            ;;
         h)
             docker::repl::help; exit 1
             ;;
