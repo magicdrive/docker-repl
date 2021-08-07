@@ -1,0 +1,110 @@
+#! /bin/bash
+
+#
+# docker-repl
+#
+# USAGE:
+#     * docker-repl                   # Launch docker with REPL in current path.
+#     *  [-h|--help]                  # Show This help.
+#
+# MIT License
+#
+# Copyright (c) 2021 Hiroshi IKEGAMI
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+set -e
+
+__DOCKER_REPL_PROMPT_ORIG="\[\e[1;36m\]\$ docker > \[\e[m\]"
+export DOCKER_REPL_DEFAULT_PROMPT="${DOCKER_REPL_DEFAULT_PROMPT:-${__DOCKER_REPL_PROMPT_ORIG}}"
+export DOCKER_REPL_LS_CMD="${DOCKER_REPL_LS_CMD}"
+export DOCKER_REPL_CAT_CMD="${DOCKER_REPL_CAT_CMD}"
+
+docker::repl::help() {
+    cat << HELP
+USAGE:
+    * docker-repl                   # Launch docker with REPL in current path.
+    *  [-h|--help]                  # Show This help.
+HELP
+    exit 1
+}
+
+
+docker::repl::main() {
+    while true; do
+        echo -ne "${DOCKER_REPL_DEFAULT_PROMPT@P}"
+        read subcommand
+
+        cmd="docker ${subcommand}"
+
+        case "${subcommand}" in
+            "help")
+                docker --help
+                ;;
+            "exit")
+                echo "bye."
+                exit 0
+                ;;
+            *)
+                if [[ ${subcommand} =~ ^!(.*)$ ]]; then
+                    ${BASH_REMATCH[1]}
+                elif [[ ${subcommand} =~ ^docker[:blank:]*.*$ ]]; then
+                    ${subcommand}
+                else
+                    ${cmd};
+                fi
+                ;;
+        esac
+    done
+}
+
+
+if [ "$1" != "--no-rlwrap" ];then
+    exec rlwrap --remember $0 --no-rlwrap $@ && exit 0;
+fi
+
+optspec=":-:hcv"
+while getopts "$optspec" optchar; do
+    case "${optchar}" in
+        -)
+            case "${OPTARG}" in
+                help)
+                    docker::repl::help; exit 1
+                    ;;
+                *)
+                    if [ "$OPTERR" = 1 ] && [ "${optspec:0:1}" != ":" ]; then
+                        echo "Unknown option --${OPTARG}" >&2
+                    fi
+                    ;;
+            esac;;
+        h)
+            docker::repl::help; exit 1
+            ;;
+        *)
+            if [ "$OPTERR" != 1 ] || [ "${optspec:0:1}" = ":" ]; then
+                echo "Non-option argument: '-${OPTARG}'" >&2
+            fi
+            exit 1
+            ;;
+    esac
+done
+
+
+docker::repl::main && exit 0;
+
