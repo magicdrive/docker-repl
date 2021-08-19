@@ -1,4 +1,4 @@
-# git-repl
+# docker-repl
 ====
 
 NAME
